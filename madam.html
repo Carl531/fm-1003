@@ -151,7 +151,7 @@ button{font:inherit;color:inherit}
 
 /* photos */
 .stack{position:relative;width:min(76vw,300px);aspect-ratio:300/430;margin:18px 0 6px;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
-.pol{position:absolute;inset:0;margin:0;background:#FBF6F1;padding:12px 12px 0;transform:rotate(var(--r));
+.pol{position:absolute;inset:0;margin:0;will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden;background:#FBF6F1;padding:12px 12px 0;transform:rotate(var(--r));
   box-shadow:0 18px 34px -18px rgba(30,5,12,.7),0 1px 2px rgba(30,5,12,.2);transition:transform .38s cubic-bezier(.3,.7,.3,1),opacity .38s;display:flex;flex-direction:column}
 .pol img,.pol .ph{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;pointer-events:none}
 .ph{display:grid;place-items:center;align-content:center;gap:8px;background:#E9D9CF;color:var(--ink-soft);font-style:italic;font-size:15px;
@@ -369,7 +369,7 @@ const LETTER = {
   ],
 
   endNote: "Thank you for opening this, and for being exactly who you are.",
-  finalLine: "This is just the first birthday I showed up for. I plan on being at all the rest."
+  finalLine: "This is the first birthday I showed up for. I'd love to be there for all the rest."
 };
 /* ============================================================ */
 
@@ -624,27 +624,31 @@ $('#toPhotos').addEventListener('click', () => go('photos'));
 /* ---------- polaroids ---------- */
 const stack = $('#stack');
 const flower = '<svg viewBox="0 0 40 40" aria-hidden="true"><g fill="currentColor"><circle cx="20" cy="11" r="6"/><circle cx="29" cy="18" r="6"/><circle cx="25" cy="28" r="6"/><circle cx="15" cy="28" r="6"/><circle cx="11" cy="18" r="6"/></g><circle cx="20" cy="20" r="4" fill="#E9D9CF"/></svg>';
-LETTER.photos.slice().reverse().forEach(p => {
+const cards = [];
+LETTER.photos.forEach(p => {
   const fig = document.createElement('figure');
   fig.className = 'pol';
   fig.style.setProperty('--r', rand(-7, 7).toFixed(1) + 'deg');
   if (p.src){ const img = document.createElement('img'); img.src = p.src; img.alt = p.caption; img.decoding = 'async'; if (p.pos) img.style.objectPosition = p.pos; fig.append(img); }
   else { const ph = document.createElement('div'); ph.className = 'ph'; ph.innerHTML = flower + '<span>Photo goes here</span>'; fig.append(ph); }
   const cap = document.createElement('figcaption'); cap.textContent = p.caption; fig.append(cap);
-  stack.append(fig);
+  stack.append(fig); cards.push(fig);
 });
+let order = cards.slice();
+const layout = () => order.forEach((el, i) => { el.style.zIndex = order.length - i; });
+layout();
 let photoIdx = 0;
 const setCount = () => { $('#photoCount').textContent = (photoIdx + 1) + ' of ' + LETTER.photos.length; };
 setCount();
 function nextPhoto(dir){
-  const el = stack.lastElementChild; if (!el || el.dataset.busy) return;
+  const el = order[0]; if (!el || el.dataset.busy) return;
   el.dataset.busy = 1;
   photoIdx = (photoIdx + 1) % LETTER.photos.length; setCount();
-  el.style.transform = `translateX(${dir * 140}%) rotate(${dir * 20}deg)`;
+  el.style.transform = `translate3d(${dir * 140}%,0,0) rotate(${dir * 20}deg)`;
   el.style.opacity = '0';
   setTimeout(() => {
+    order.push(order.shift()); layout();
     el.style.transition = 'none';
-    stack.prepend(el);
     el.style.transform = ''; el.style.opacity = '';
     void el.offsetWidth;
     el.style.transition = '';
@@ -653,14 +657,14 @@ function nextPhoto(dir){
 }
 let sx = 0, dx = 0, drag = null;
 stack.addEventListener('pointerdown', e => {
-  drag = stack.lastElementChild; if (!drag || drag.dataset.busy){ drag = null; return; }
+  drag = order[0]; if (!drag || drag.dataset.busy){ drag = null; return; }
   sx = e.clientX; dx = 0; drag.style.transition = 'none';
   stack.setPointerCapture(e.pointerId);
 });
 stack.addEventListener('pointermove', e => {
   if (!drag) return;
   dx = e.clientX - sx;
-  drag.style.transform = `translateX(${dx}px) rotate(calc(var(--r) + ${dx / 18}deg))`;
+  drag.style.transform = `translate3d(${dx}px,0,0) rotate(calc(var(--r) + ${dx / 18}deg))`;
 });
 const endDrag = () => {
   if (!drag) return;
