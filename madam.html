@@ -535,6 +535,7 @@ for (let i = 0; i < LETTER.candles; i++){
 let wished = false, wishMade = false;
 $('#wishBtn').addEventListener('click', () => {
   wishMade = true;
+  getAudio();
   $('#wishBtn').hidden = true;
   $('#micBtn').hidden = false;
   $('#cakeTitle').textContent = 'Now blow out the candles';
@@ -556,6 +557,7 @@ function blow(c){
       $('#musicBtn').hidden = false;
       $('#toPhotos').hidden = false;
       burst(reduce ? 30 : 140);
+      playSong();
     }, 600);
   }
 }
@@ -584,10 +586,18 @@ $('#micBtn').addEventListener('click', async () => {
 });
 
 /* music box: Happy Birthday (public domain melody) */
-let playing = false;
-$('#musicBtn').addEventListener('click', () => {
-  if (playing) return; playing = true;
-  const ac = new (window.AudioContext || window.webkitAudioContext)();
+let playing = false, audioCtx = null;
+function getAudio(){
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (e) {}
+  return audioCtx;
+}
+function playSong(){
+  if (playing) return;
+  const ac = getAudio(); if (!ac) return;
+  playing = true;
   const F = { G4: 392, A4: 440, B4: 493.88, C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99 };
   const song = [['G4',.75],['G4',.25],['A4',1],['G4',1],['C5',1],['B4',2],
                 ['G4',.75],['G4',.25],['A4',1],['G4',1],['D5',1],['C5',2],
@@ -606,8 +616,9 @@ $('#musicBtn').addEventListener('click', () => {
   };
   for (const [n, d] of song){ tone(F[n], t); t += d * beat; }
   $('#musicBtn').textContent = 'Playing…';
-  setTimeout(() => { playing = false; $('#musicBtn').textContent = 'Play it again'; ac.close(); }, (t - ac.currentTime + 1.6) * 1000);
-});
+  setTimeout(() => { playing = false; $('#musicBtn').textContent = 'Play it again'; }, (t - ac.currentTime + 1.6) * 1000);
+}
+$('#musicBtn').addEventListener('click', playSong);
 $('#toPhotos').addEventListener('click', () => go('photos'));
 
 /* ---------- polaroids ---------- */
